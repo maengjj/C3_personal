@@ -119,7 +119,7 @@ struct IngredientSheetView: View {
         guard let selectedImage else { return }
         guard let imageData = selectedImage.jpegData(compressionQuality: 0.7) else { return }
         guard let model else { return }
-        //
+        
         let prompt = """
         음식 이름: \(menuName)
         음식 가격: \(menuPrice)원
