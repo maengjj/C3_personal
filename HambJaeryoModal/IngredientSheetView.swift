@@ -8,6 +8,7 @@
 import SwiftUI
 import PhotosUI
 import FirebaseAI
+import SwiftData
 
 struct IngredientSheetView: View {
     @Binding var isPresented: Bool
@@ -18,7 +19,7 @@ struct IngredientSheetView: View {
     @State private var menuName: String = ""
     @State private var menuPrice: String = ""
     
-    @State private var parsedIngredients: [IngredientInfo] = []
+    @Environment(\.modelContext) private var modelContext
     
 //    let model = FirebaseAI.firebaseAI().generativeModel(modelName: "gemini-1.5-pro")
     
@@ -107,8 +108,7 @@ struct IngredientSheetView: View {
                 },
                 menuName: menuName,
                 menuPrice: menuPrice,
-                image: selectedImage,
-                parsedIngredients: parsedIngredients
+                image: selectedImage
             )
         }
         .presentationDetents([.large])
@@ -139,6 +139,7 @@ struct IngredientSheetView: View {
         - 재료 수는 5~10개 정도로 제한
         - 'unitPrice'는 예측된 단가로 숫자만 제공
         - 텍스트 설명 없이 JSON 배열만 출력
+        
         """
         
         do {
@@ -162,7 +163,28 @@ struct IngredientSheetView: View {
                     }
 
                     if let data = jsonString.data(using: .utf8) {
-                        parsedIngredients = try JSONDecoder().decode([IngredientInfo].self, from: data)
+                        let decoded = try JSONDecoder().decode([TemporaryIngredient].self, from: data)
+                        
+                        let fetchDescriptor = FetchDescriptor<IngredientEntity>(
+                            predicate: #Predicate { $0.menuName == menuName }
+                        )
+                        if let existing = try? modelContext.fetch(fetchDescriptor) {
+                            for item in existing {
+                                modelContext.delete(item)
+                            }
+                        }
+                        
+                        for item in decoded {
+                            let entity = IngredientEntity(
+                                name: item.name,
+                                amount: item.amount,
+                                unitPrice: item.unitPrice,
+                                menuName: menuName,
+                                menuPrice: menuPrice
+                            )
+                            modelContext.insert(entity)
+                        }
+                        try? modelContext.save()
                         showResultSheet = true
                     }
                 } catch {
@@ -201,3 +223,9 @@ struct IngredientSheetView: View {
  }
  }
  */
+
+private struct TemporaryIngredient: Decodable {
+    let name: String
+    let amount: String
+    let unitPrice: Int
+}

@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import SwiftData
 
 struct IngredientResultView: View {
     @Environment(\.dismiss) private var dismiss
@@ -13,7 +14,7 @@ struct IngredientResultView: View {
     let menuName: String
     let menuPrice: String
     let image: UIImage?
-    let parsedIngredients: [IngredientInfo]
+    @Query var parsedIngredients: [IngredientEntity]
 
     @State private var isEditing = false
 
@@ -42,7 +43,7 @@ struct IngredientResultView: View {
             Divider()
 
             List {
-                ForEach(parsedIngredients) { ingredient in
+                ForEach(parsedIngredients, id: \.id) { ingredient in
                     VStack(alignment: .leading, spacing: 4) {
                         Text(ingredient.name)
                             .font(.headline)
