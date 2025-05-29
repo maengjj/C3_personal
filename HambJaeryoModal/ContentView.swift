@@ -8,16 +8,18 @@
 import SwiftUI
 
 struct ContentView: View {
+    @State private var showSheet = false
+    
     var body: some View {
-        VStack {
-            Image(systemName: "globe")
-                .imageScale(.large)
-                .foregroundStyle(.tint)
-            Text("Hello, world!")
+        Button("나의 메뉴 +") {
+            showSheet = true
         }
-        .padding()
+        .sheet(isPresented: $showSheet) {
+            IngredientSheetView(isPresented: $showSheet)
+        }
     }
 }
+
 
 #Preview {
     ContentView()
