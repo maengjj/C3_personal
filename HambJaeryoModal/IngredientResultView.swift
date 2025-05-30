@@ -10,6 +10,7 @@ import SwiftData
 
 struct IngredientResultView: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.modelContext) private var modelContext
     let dismissParentSheet: () -> Void
     let menuName: String
     let menuPrice: String
@@ -56,6 +57,16 @@ struct IngredientResultView: View {
             }
 
             Button("저장하고 모두 닫기") {
+                for ingredient in parsedIngredients {
+                    modelContext.insert(ingredient)
+                }
+
+                do {
+                    try modelContext.save()
+                } catch {
+                    print("Failed to save ingredients: \(error)")
+                }
+
                 dismiss()
                 DispatchQueue.main.asyncAfter(deadline: .now()) {
                     dismissParentSheet()
@@ -70,68 +81,6 @@ struct IngredientResultView: View {
             .padding()
         }
         .presentationDetents([.large])
+        .navigationBarBackButtonHidden(true)
     }
 }
-
-
-/*
-struct IngredientResultView: View {
-    @Environment(\.dismiss) private var dismiss
-    let dismissParentSheet: () -> Void
-    @State private var isEditing = false
-    
-    var body: some View {
-        VStack {
-            // 상단 바
-            HStack {
-                Button("닫기") {
-                    dismiss()
-                }
-                
-                Spacer()
-                
-                Text("계산 결과")
-                    .font(.title2)
-                    .bold()
-                
-                Spacer()
-                
-                Button(isEditing ? "완료" : "편집") {
-                    isEditing.toggle()
-                }
-            }
-            .padding(.horizontal)
-            .padding(.top)
-            
-            Divider()
-            
-            // 여기에 편집 여부에 따라 달라지는 내용 등 표시 가능
-            VStack {
-                if isEditing {
-                    Text("편집 중입니다...")
-                } else {
-                    Text("계산된 재료 결과를 보여주는 영역")
-                }
-                
-                Spacer()
-                
-                Button("저장하고 모두 닫기") {
-                    dismiss()
-                    DispatchQueue.main.asyncAfter(deadline: .now()) {
-                        dismissParentSheet()
-                    }
-                }
-                .font(.headline)
-                .padding()
-                .frame(maxWidth: .infinity)
-                .background(Color.green)
-                .foregroundColor(.white)
-                .cornerRadius(12)
-                .padding()
-            }
-            .padding()
-        }
-        .presentationDetents([.large])
-    }
-}
-*/
