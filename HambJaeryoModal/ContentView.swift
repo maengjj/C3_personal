@@ -9,89 +9,109 @@ import SwiftUI
 import SwiftData
 
 struct ContentView: View {
-    @Environment(\.modelContext) private var modelContext
-    @State private var navigateToIngredientSheet = false
+    @State private var showAddMenu      = false
+    @State private var selectedMenuName = ""
+    
+    // SwiftData에서 모든 IngredientEntity를 최신순(createdAt)으로 가져옴
+    @Query(sort: \IngredientEntity.createdAt, order: .reverse)
+    private var allIngredients: [IngredientEntity]
+    
+    @Environment(\.modelContext) private var context
+    
+    /// 중복 없이 최신순으로 정리한 메뉴 이름 배열
+    private var menuNames: [String] {
+        var seen: Set<String> = []
+        return allIngredients.compactMap { entity in
+            guard !seen.contains(entity.menuName) else { return nil }
+            seen.insert(entity.menuName)
+            return entity.menuName
+        }
+    }
     
     var body: some View {
         NavigationStack {
-            ScrollView {
-                VStack {
-                    HStack {
-                        Text("나의 메뉴")
+            VStack {
+                HStack {
+                    Text("나의 메뉴")
+                        .font(.title)
+                        .fontWeight(.bold)
+                    Spacer()
+                    Button {
+                        showAddMenu = true
+                    } label: {
+                        Image(systemName: "plus")
                             .font(.title)
                             .fontWeight(.bold)
-                        Spacer()
-                        Button {
-                            navigateToIngredientSheet = true
-                        } label: {
-                            Image(systemName: "plus")
-                                .font(.title)
-                                .fontWeight(.bold)
-                        }
                     }
+                }
+                
+                if menuNames.isEmpty {
                     Spacer()
+                    Text(
+                        """
+                        메뉴를 추가해서 재료원가를
+                        파악해보세요
+                        """
+                    )
+                    .font(.body)
+                    .fontWeight(.regular)
+                    .multilineTextAlignment(.center)
+                    .padding()
+                    Spacer()
+                } else {
                     List {
-                        let items = (try? modelContext.fetch(FetchDescriptor<IngredientEntity>())) ?? []
-                        ForEach(items, id: \.self) { item in
-                            if let data = item.image,
-                               let uiImage = UIImage(data: data) {
-                                Section {
-                                    NavigationLink {
-                                        // 연결지점
-                                    } label: {
-                                        HStack {
-                                            Image(uiImage: uiImage)
-                                                .resizable()
-                                                .scaledToFit()
-                                                .frame(height: 120)
-                                                .frame(width: 60)
-                                                .padding(.vertical, 3)
-                                                .padding(.horizontal, 15)
-                                                .background(Color(UIColor.systemGray5))
-                                                .cornerRadius(12)
-                                            VStack(alignment: .leading) {
-                                                Text(item.menuName)
-                                                    .font(.system(size: 18, weight: .bold))
-                                                Text("가격: \(item.menuPrice)")
-                                                    .font(.system(size: 12))
-                                                    .foregroundStyle(.gray)
-                                                    .lineLimit(3)
-                                            }
-                                        }
-                                    }
-                                }
-                                .listSectionSeparator(.hidden, edges: [.top, .bottom])
-                            }
+                        ForEach(menuNames, id: \.self) { name in
+                            MenuRowView(menuName: name)
                         }
                     }
                     .scrollContentBackground(.hidden)
                     .background(Color.white)
-                    
                 }
-                .padding(17)
-                .navigationTitle("메뉴관리")
-                .navigationBarTitleDisplayMode(.inline)
-//                .toolbar {
-//                    ToolbarItem(placement: .navigationBarTrailing) {
-//                        Button {
-//                            navigateToIngredientSheet = true
-//                        } label: {
-//                            Image(systemName: "plus")
-//                                .font(.title2)
-//                        }
-//                    }
-//                }
-                .navigationDestination(isPresented: $navigateToIngredientSheet) {
-                    IngredientSheetView(isPresented: .constant(false))
-                }
+                
             }
+            .padding(17)
+            .navigationTitle("메뉴관리")
+            .navigationBarTitleDisplayMode(.inline)
+            
+            // ── “나의 메뉴 +” → IngredientSheetView ─────────
+            .navigationDestination(isPresented: $showAddMenu) {
+                IngredientSheetView(
+                    showAddMenu:      $showAddMenu,
+                    selectedMenuName: $selectedMenuName
+                )
+            }
+        }
+        // ── 디버그: allIngredients의 변화 감지
+        .onChange(of: allIngredients.count) { _, newCount in
+            print("🔵 [Debug] allIngredients.count changed to \(newCount)")
+        }
+        // ── 디버그: selectedMenuName이 바뀌면 showAddMenu를 false로 (IngredientSheetView를 강제 팝)
+        .onChange(of: selectedMenuName) { _, newValue in
+            if !newValue.isEmpty {
+                // “메뉴 등록” 직후: 이 코드를 통해 showAddMenu가 false가 되어
+                // IngredientSheetView + IngredientResultView가 모두 팝됩니다.
+                showAddMenu = false
+            }
+        }
+    }
+    
+    // ── Helper: 해당 메뉴명에 속한 IngredientEntity 모두 fetch ─────────
+    private func fetchEntities(for menuName: String) -> [IngredientEntity] {
+        let predicate = #Predicate<IngredientEntity> { $0.menuName == menuName }
+        let descriptor = FetchDescriptor<IngredientEntity>(
+            predicate: predicate,
+            sortBy:    [SortDescriptor(\.createdAt, order: .reverse)]
+        )
+        do {
+            return try context.fetch(descriptor)
+        } catch {
+            print("Fetch error for \(menuName):", error)
+            return []
         }
     }
 }
 
-
 #Preview {
-    NavigationStack {
-        ContentView()
-    }
+    ContentView()
+        .modelContainer(for: [IngredientEntity.self], inMemory: true)
 }
