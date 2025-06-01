@@ -24,6 +24,7 @@ struct HambJaeryoModalApp: App {
             NavigationView {
                 ContentView()
             }
+            .modelContainer(for: IngredientEntity.self)
         }
     }
 }

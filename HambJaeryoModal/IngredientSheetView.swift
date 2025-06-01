@@ -1,5 +1,5 @@
 //
-//  Untitled.swift
+//  IngredientSheetView.swift
 //  HambJaeryoModal
 //
 //  Created by coulson on 5/28/25.
@@ -8,117 +8,203 @@
 import SwiftUI
 import PhotosUI
 import FirebaseAI
+import SwiftData
 
 struct IngredientSheetView: View {
-    @Binding var isPresented: Bool
-    @State private var showResultSheet = false
+    @Binding var showAddMenu: Bool
+    @Binding var selectedMenuName: String
     
+    @State private var isLoading = false
+    @State private var navigateToResult = false
     @State private var selectedItem: PhotosPickerItem?
     @State private var selectedImage: UIImage?
     @State private var menuName: String = ""
     @State private var menuPrice: String = ""
-    
     @State private var parsedIngredients: [IngredientInfo] = []
     
-//    let model = FirebaseAI.firebaseAI().generativeModel(modelName: "gemini-1.5-pro")
     
-//    let model = FirebaseAI.firebaseAI().generativeModel(modelName: "gemini-2.0-flash-001")
+    @Environment(\.modelContext) private var context
+    
     
     private var model: GenerativeModel?
-
-    init(isPresented: Binding<Bool>, firebaseService: FirebaseAI = FirebaseAI.firebaseAI()) {
-            self._isPresented = isPresented               // Binding 초기화
-            self.model = firebaseService.generativeModel(modelName: "gemini-2.0-flash-001")
-        }
+    
+    
+    init(
+        showAddMenu: Binding<Bool>,
+        selectedMenuName: Binding<String>,
+        firebaseService: FirebaseAI = FirebaseAI.firebaseAI()
+    ) {
+        _showAddMenu  = showAddMenu
+        _selectedMenuName = selectedMenuName
+        self.model = firebaseService.generativeModel(modelName: "gemini-2.0-flash-001")
+    }
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Text("재료원가 계산")
-                .font(.title)
-                .padding(.top)
-                .frame(maxWidth: .infinity, alignment: .center)
-            
-            PhotosPicker(
-                selection: $selectedItem,
-                matching: .images,
-                photoLibrary: .shared()
-            ) {
-                if let image = selectedImage {
-                    Image(uiImage: image)
-                        .resizable()
-                        .scaledToFit()
-                        .frame(height: 200)
-                        .cornerRadius(12)
-                        .padding(.horizontal, 10)
-                } else {
-                    ZStack {
-                        RoundedRectangle(cornerRadius: 12)
-                            .fill(Color.gray.opacity(0.1))
-                            .frame(height: 200)
-                        Text("이미지 선택")
-                            .foregroundColor(.blue)
-                    }
-                    .padding(.horizontal, 10)
-                }
-            }
-            .onChange(of: selectedItem) { newItem in
-                Task {
-                    if let data = try? await newItem?.loadTransferable(type: Data.self),
-                       let uiImage = UIImage(data: data) {
-                        selectedImage = uiImage
-                    }
-                }
-            }
-            
-            Group {
-                Text("메뉴 이름")
-                    .font(.headline)
-                TextField("예: 된장찌개", text: $menuName)
-                    .textFieldStyle(.roundedBorder)
+        NavigationStack {
+            ZStack {
                 
-                Text("메뉴 가격")
-                    .font(.headline)
-                TextField("예: 9000", text: $menuPrice)
-                    .textFieldStyle(.roundedBorder)
-                    .keyboardType(.numberPad)
-            }
-            .padding(.horizontal, 10)
-            
-            Spacer()
-            
-            Button("재료원가 계산하기") {
-                Task {
-                    await analyzeIngredients()
+                List {
+                    Section {
+                        PhotosPicker(
+                            selection: $selectedItem,
+                            matching: .images,
+                            photoLibrary: .shared()
+                        ) {
+                            if let image = selectedImage {
+                                ZStack {
+                                    RoundedRectangle(cornerRadius: 32)
+                                        .fill(Color.clear)
+                                        .frame(height: 360)
+                                        .overlay {
+                                            Image(uiImage: image)
+                                                .resizable()
+                                                .scaledToFill()
+                                                .frame(width:360, height: 360)
+                                                .clipShape(RoundedRectangle(cornerRadius: 32))
+                                        }
+                                }
+                            } else {
+                                ZStack {
+                                    RoundedRectangle(cornerRadius: 32)
+                                        .fill(Color.white)
+                                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                                    
+                                    VStack {
+                                        ZStack {
+                                            Circle()
+                                                .fill(Color.blue.opacity(0.1))
+                                                .frame(width: 100, height: 100)
+                                            Image(systemName: "photo.badge.plus")
+                                                .font(.system(size: 20))
+                                                .foregroundColor(.blue)
+                                        }
+                                        .padding(.bottom, 52)
+                                        Text(
+                                    """
+                                    사진을 등록하면 자동으로
+                                    재료 원가를 계산해 드릴게요
+                                    """
+                                        )
+                                        .multilineTextAlignment(.center)
+                                        .font(.title3)
+                                        .fontWeight(.bold)
+                                    }
+                                }
+                                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                            }
+                        }
+                        .frame(width: 360, height: 360)
+                        .onChange(of: selectedItem) { _, newItem in
+                            Task {
+                                if let data = try? await newItem?.loadTransferable(type: Data.self),
+                                   let uiImage = UIImage(data: data) {
+                                    selectedImage = uiImage
+                                }
+                            }
+                        }
+                    }
+                    .listRowBackground(Color.clear)
+                    
+                    
+                    Section {
+                        HStack {
+                            Text("메뉴 이름")
+                                .font(.body)
+                                .fontWeight(.regular)
+                            TextField("", text: $menuName)
+                                .multilineTextAlignment(.trailing)
+                                .foregroundStyle(.black)
+                                .font(.body)
+                                .fontWeight(.bold)
+                        }
+                        
+                        HStack {
+                            Text("메뉴 가격")
+                                .font(.body)
+                                .fontWeight(.regular)
+                            TextField("", text: $menuPrice)
+                                .multilineTextAlignment(.trailing)
+                                .foregroundStyle(.black)
+                                .font(.body)
+                                .fontWeight(.bold)
+                                .keyboardType(.numberPad)
+                        }
+                        .padding(.top, 16)
+                        HStack{}
+                    }
+                    .listRowBackground(Color.clear)
+                    
+                    
+                    Button {
+                        isLoading = true
+                        Task {
+                            await analyzeIngredients()
+                            isLoading = false
+                        }
+                    } label: {
+                        Text("재료원가 계산하기")
+                            .font(.body)
+                            .fontWeight(.semibold)
+                            .foregroundStyle(.white)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 50)
+                    .background((isLoading || selectedImage == nil || menuName.isEmpty || menuPrice.isEmpty) ? Color.gray : Color.blue)
+                    .cornerRadius(10)
+                    .disabled(isLoading || selectedImage == nil || menuName.isEmpty || menuPrice.isEmpty)
+                    .listRowInsets(EdgeInsets())
+                    .listRowBackground(Color.clear)
+                    .padding(.top, 20)
+                    
                 }
             }
-            .font(.headline)
-            .padding()
-            .frame(maxWidth: .infinity)
-            .background(Color.blue)
-            .foregroundColor(.white)
-            .cornerRadius(12)
-            .padding(.horizontal)
-            .padding(.bottom, 30)
+            .onTapGesture {
+                UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+            }
+            .listStyle(.insetGrouped)
+            .scrollContentBackground(.hidden)
+            .background(Color(.systemGray6))
+            .navigationDestination(isPresented: $navigateToResult) {
+                IngredientResultView(
+                    selectedMenuName: $selectedMenuName,
+                    showAddMenu: $showAddMenu,
+                    menuName: menuName,
+                    menuPrice: menuPrice,
+                    image: selectedImage,
+                    parsedIngredients: parsedIngredients
+                )
+            }
+            .overlay {
+                if isLoading {
+                    ZStack {
+                        Color.black.opacity(0.4).ignoresSafeArea()
+                        VStack(spacing: 8) {
+                            Text("재료를 분석 중이에요...")
+                                .font(.body)
+                                .fontWeight(.bold)
+                                .foregroundStyle(.white)
+                                .padding(.bottom, 16)
+                            ProgressView()
+                                .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                                .scaleEffect(2)
+                        }
+                        .padding()
+                    }
+                }
+            }
+
         }
-        .sheet(isPresented: $showResultSheet) {
-            IngredientResultView(
-                dismissParentSheet: {
-                    isPresented = false
-                },
-                menuName: menuName,
-                menuPrice: menuPrice,
-                image: selectedImage,
-                parsedIngredients: parsedIngredients
-            )
-        }
-        .presentationDetents([.large])
+        .navigationTitle("재료원가계산")
+        .navigationBarTitleDisplayMode(.inline)
     }
+    
+    
     
     // MARK: - Gemini API 호출 및 파싱
     func analyzeIngredients() async {
-        guard let selectedImage else { return }
-        guard let imageData = selectedImage.jpegData(compressionQuality: 0.7) else { return }
-        guard let model else { return }
+        guard let selectedImage,
+              //        guard let imageData = selectedImage.jpegData(compressionQuality: 0.7) else { return }
+              let model else { return }
         
         let prompt = """
         음식 이름: \(menuName)
@@ -129,75 +215,68 @@ struct IngredientSheetView: View {
         [
           {
             "name": "재료명",
-            "amount": "사용량 및 단위 (예: 2큰술, 100g)",
+            "amount": "사용량 및 그램단위 (예: 100g)",
             "unitPrice": 단위 원가 (숫자, 원 단위)
           },
           ...
         ]
         
         - 사용된 재료는 주재료 위주로 구성
-        - 재료 수는 5~10개 정도로 제한
-        - 'unitPrice'는 예측된 단가로 숫자만 제공
+        - 'unitPrice'는 'amount'의 단위 만큼만 사용했을 때 얼마인지 계산해줘.
         - 텍스트 설명 없이 JSON 배열만 출력
         """
         
         do {
                     let parts: [any PartsRepresentable] = [selectedImage]
                     var fullText = ""
-                    for try await content in try model.generateContentStream(prompt, parts) {
-                        if let line = content.text { fullText += line }
+                    for try await chunk in try model.generateContentStream(prompt, parts) {
+                        if let text = chunk.text { fullText += text }
                     }
-
+                    
                     // 백틱 제거 및 JSON 추출
                     let cleaned = fullText
                         .replacingOccurrences(of: "```json", with: "")
                         .replacingOccurrences(of: "```", with: "")
                         .trimmingCharacters(in: .whitespacesAndNewlines)
-
-                    let jsonString: String
-                    if let first = cleaned.firstIndex(of: "["), let last = cleaned.lastIndex(of: "]") {
-                        jsonString = String(cleaned[first...last])
-                    } else {
-                        jsonString = cleaned
+                    
+                    guard
+                        let first = cleaned.firstIndex(of: "["),
+                        let last  = cleaned.lastIndex(of: "]"),
+                        let data  = String(cleaned[first...last]).data(using: .utf8)
+                    else { return }
+                    
+                    
+                    let decoded = try JSONDecoder().decode([IngredientInfo].self, from: data)
+                    // 1️⃣ – Main Thread에서 상태 갱신 및 저장 수행
+                    await MainActor.run {
+                        parsedIngredients = decoded
+                        
+                        // 3️⃣ – 저장이 끝나면 화면 전환
+                        navigateToResult = true
                     }
-
-                    if let data = jsonString.data(using: .utf8) {
-                        parsedIngredients = try JSONDecoder().decode([IngredientInfo].self, from: data)
-                        showResultSheet = true
-                    }
+                    
                 } catch {
                     print("Gemini API 호출 실패: \(error)")
                 }
-        
-    }
-    
+                
+            }
+        }
+
+#Preview {
+    IngredientSheetViewPreview()
 }
 
-/*
- import SwiftUI
- 
- struct IngredientSheetView: View {
- @Binding var isPresented: Bool
- @State private var showResultSheet = false
- 
- var body: some View {
- VStack {
- Text("재료원가 계산")
- .font(.title)
- 
- Spacer()
- 
- Button("재료원가 계산하기") {
- showResultSheet = true
- }
- .padding()
- }
- .presentationDetents([.large])
- .sheet(isPresented: $showResultSheet) {
- IngredientResultView(dismissParentSheet: {
- isPresented = false
- })
- }
- }
- }
- */
+struct IngredientSheetViewPreview: View {
+    @State var isPresented = true
+    @State var showAddMenu = true
+    @State var selectedMenuName = "함박스테이크"
+
+    var body: some View {
+        NavigationStack {
+            IngredientSheetView(
+                showAddMenu: $showAddMenu,
+                selectedMenuName: $selectedMenuName
+            )
+        }
+    }
+}
