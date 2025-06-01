@@ -52,7 +52,7 @@ struct IngredientSheetView: View {
                         ) {
                             if let image = selectedImage {
                                 ZStack {
-                                    RoundedRectangle(cornerRadius: 12)
+                                    RoundedRectangle(cornerRadius: 32)
                                         .fill(Color.clear)
                                         .frame(height: 360)
                                         .overlay {
@@ -60,7 +60,7 @@ struct IngredientSheetView: View {
                                                 .resizable()
                                                 .scaledToFill()
                                                 .frame(width:360, height: 360)
-                                                .clipShape(RoundedRectangle(cornerRadius: 12))
+                                                .clipShape(RoundedRectangle(cornerRadius: 32))
                                         }
                                 }
                             } else {
@@ -109,17 +109,24 @@ struct IngredientSheetView: View {
                     Section {
                         HStack {
                             Text("메뉴 이름")
-                            Spacer()
+                                .font(.body)
+                                .fontWeight(.regular)
                             TextField("", text: $menuName)
                                 .multilineTextAlignment(.trailing)
-                                .foregroundColor(.gray)
+                                .foregroundStyle(.black)
+                                .font(.body)
+                                .fontWeight(.bold)
                         }
                         
                         HStack {
                             Text("메뉴 가격")
+                                .font(.body)
+                                .fontWeight(.regular)
                             TextField("", text: $menuPrice)
                                 .multilineTextAlignment(.trailing)
-                                .foregroundColor(.gray)
+                                .foregroundStyle(.black)
+                                .font(.body)
+                                .fontWeight(.bold)
                                 .keyboardType(.numberPad)
                         }
                         .padding(.top, 16)
@@ -150,6 +157,9 @@ struct IngredientSheetView: View {
                     .padding(.top, 20)
                     
                 }
+            }
+            .onTapGesture {
+                UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
             }
             .listStyle(.insetGrouped)
             .scrollContentBackground(.hidden)

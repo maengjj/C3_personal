@@ -64,15 +64,17 @@ struct MenuRowView: View {
     
     var body: some View {
         NavigationLink {
-            // Destination: IngredientResultView
-            IngredientResultView(
-                selectedMenuName: .constant(menuName),
-                showAddMenu:      .constant(false),
-                menuName:         menuName,
-                menuPrice:        priceString,
-                image:            headerImage,
-                parsedIngredients: infos
-            )
+            NavigationStack {
+                IngredientResultView(
+                    selectedMenuName: .constant(menuName),
+                    showAddMenu:      .constant(false),
+                    menuName:         menuName,
+                    menuPrice:        priceString,
+                    image:            headerImage,
+                    parsedIngredients: infos
+                )
+                .navigationBarBackButtonHidden(false)
+            }
         } label: {
             // Label: 썸네일 + 메뉴 이름 + 가격
             HStack(spacing: 12) {
@@ -80,24 +82,42 @@ struct MenuRowView: View {
                     Image(uiImage: thumb)
                         .resizable()
                         .scaledToFill()
-                        .frame(width: 40, height: 40)
-                        .clipShape(RoundedRectangle(cornerRadius: 8))
+                        .frame(width: 63, height: 63)
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
                 } else {
-                    RoundedRectangle(cornerRadius: 8)
+                    RoundedRectangle(cornerRadius: 12)
                         .fill(Color.gray.opacity(0.2))
-                        .frame(width: 40, height: 40)
+                        .frame(width: 63, height: 63)
                         .overlay(
                             Image(systemName: "fork.knife")
-                                .foregroundColor(.orange)
                         )
                 }
-                
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(menuName)
-                        .font(.body)
-                    Text("\(priceString)원")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
+                VStack {
+                    HStack {
+                        Text(menuName)
+                            .font(.system(size: 17))
+                            .fontWeight(.semibold)
+                        Spacer()
+                        if let price = Int(priceString) {
+                            Text("재료원가 \(price.formatted())원")
+                                .font(.footnote)
+                                .fontWeight(.regular)
+                                .foregroundStyle(.secondary)
+                        } else {
+                            Text("재료원가 정보 없음")
+                                .font(.footnote)
+                                .fontWeight(.regular)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    HStack {
+                        Text("그래프")
+                        Spacer()
+                        Text("원가율 \(priceString)%")
+                            .font(.footnote)
+                            .fontWeight(.regular)
+                            .foregroundStyle(.blue)
+                    }
                 }
             }
         }

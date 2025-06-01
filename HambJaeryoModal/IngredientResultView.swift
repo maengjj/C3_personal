@@ -12,7 +12,6 @@ struct IngredientResultView: View {
     @Environment(\.modelContext) private var context
     @Environment(\.dismiss) var dismiss
     
-    
     @Binding var selectedMenuName: String
     @Binding var showAddMenu: Bool
     

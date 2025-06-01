@@ -62,14 +62,17 @@ struct ContentView: View {
                     List {
                         ForEach(menuNames, id: \.self) { name in
                             MenuRowView(menuName: name)
+                                .listRowInsets(EdgeInsets(top: 8, leading: 0, bottom: 8, trailing: 0))
+
                         }
                     }
+                    .listStyle(.plain)
                     .scrollContentBackground(.hidden)
                     .background(Color.white)
                 }
                 
             }
-            .padding(17)
+            .padding(16)
             .navigationTitle("메뉴관리")
             .navigationBarTitleDisplayMode(.inline)
             
